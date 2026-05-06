@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Chế độ chạy toàn màn hình giống App thật -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <!-- Nếu file của bạn là logo.jpg -->
+    <link rel="apple-touch-icon" href="logo1.jpg">
+    <link rel="icon" href="logo1.jpg">
+    <title>Chấn Hưng IoT - Hệ Thống Điều Khiển</title>
+    <!-- Nhúng thư viện MQTT qua CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/4.3.7/mqtt.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root { --primary: #27ae60; --danger: #e74c3c; --dark: #2c3e50; --warning: #f39c12; --blue: #3498db; --light-warn: #fff3cd; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f3f5; margin: 0; padding: 15px; color: var(--dark); }
+        .container { max-width: 500px; margin: auto; }
+        .card { background: white; border-radius: 20px; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); margin-bottom: 15px; }
+        
+        /* Device Selector */
+        .device-selector { display: flex; gap: 10px; }
+        .device-selector input { flex: 1; padding: 12px; border-radius: 10px; border: 1px solid #ddd; outline: none; font-family: monospace; font-size: 1rem; }
+        .btn-connect { background: var(--blue); color: white; border: none; padding: 10px 20px; border-radius: 10px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        .btn-connect:hover { background: #2980b9; }
+
+        /* Status & Clocks */
+        .status-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .dot { height: 12px; width: 12px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+        .online { background: var(--primary); box-shadow: 0 0 10px var(--primary); }
+        .offline { background: var(--danger); box-shadow: 0 0 10px var(--danger); }
+        
+        .clock-section { display: flex; justify-content: space-between; gap: 10px; }
+        .clock-box { flex: 1; background: #f8f9fa; padding: 12px; border-radius: 12px; text-align: center; border: 1px solid #eee; }
+        .clock-label { font-size: 0.7rem; color: #7f8c8d; text-transform: uppercase; display: block; margin-bottom: 3px; }
+        .clock-time { font-family: 'Courier New', monospace; font-weight: bold; font-size: 1.2rem; color: var(--dark); }
+        .clock-box.highlight { border-color: var(--blue); }
+        .clock-box.highlight .clock-time { color: var(--blue); }
+
+        /* Sync Warning */
+        #sync-warning { display: none; background: var(--light-warn); color: #856404; padding: 15px; border-radius: 15px; margin-bottom: 15px; font-size: 0.9rem; border-left: 5px solid var(--warning); animation: fadeIn 0.5s; }
+        @keyframes fadeIn { from {opacity: 0;} to {opacity: 1;} }
+        .sync-btn-small { background: var(--warning); color: white; border: none; padding: 8px 15px; border-radius: 8px; cursor: pointer; font-size: 0.8rem; font-weight: bold; margin-top: 10px; }
+
+        /* Control Button */
+        .btn-pump { width: 100%; padding: 25px; border: none; border-radius: 15px; font-size: 1.3rem; font-weight: bold; cursor: pointer; transition: 0.4s; color: white; display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 15px; }
+        .btn-on { background: var(--primary); box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3); }
+        .btn-off { background: var(--danger); box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3); }
+        .btn-disabled { background: #95a5a6; cursor: not-allowed; }
+
+        /* Alarms & Log */
+        .alarm-item { background: #f9f9f9; padding: 12px; border-radius: 12px; margin-top: 10px; display: flex; align-items: center; justify-content: space-between; border: 1px solid #eee; }
+        input[type="time"], input[type="number"] { border: 1px solid #ddd; padding: 8px; border-radius: 8px; outline: none; }
+        .save-icon { color: var(--primary); cursor: pointer; font-size: 1.4rem; border: none; background: none; transition: 0.2s; }
+        .save-icon:hover { transform: scale(1.2); }
+        
+        #log-box { height: 150px; overflow-y: auto; background: var(--dark); color: #00ff00; padding: 12px; border-radius: 10px; font-family: 'Courier New', monospace; font-size: 0.8rem; line-height: 1.4; }
+        
+        /* Switch UI */
+        .switch { position: relative; display: inline-block; width: 40px; height: 20px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px; }
+        .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--primary); }
+        input:checked + .slider:before { transform: translateX(20px); }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- Sửa tiêu đề: Bỏ chữ IOT -->
+<h2 style="text-align: center; color: var(--dark); margin-bottom: 20px;">
+    <i class="fas fa-leaf" style="color: var(--primary);"></i> CHẤN HƯNG
+</h2>
+
+<!-- Thêm id="login-section" để điều khiển ẩn hiện -->
+<div id="login-section" class="card" style="padding: 15px;">
+    <div class="device-selector">
+        <input type="text" id="device-id" placeholder="Nhập ID (Ví dụ: 240AC4...)">
+        <button class="btn-connect" onclick="reconnect()">
+            <i class="fas fa-link"></i> Kết nối
+        </button>
+    </div>
+</div>
+
+    <!-- Cảnh báo lệch giờ -->
+    <div id="sync-warning">
+        <i class="fas fa-clock"></i> <b>Lỗi thời gian!</b><br>
+        Giờ mạch đang lệch so với thực tế. Lịch trình có thể chạy sai.<br>
+        <button class="sync-btn-small" onclick="syncTime()">
+            <i class="fas fa-sync-alt"></i> CẬP NHẬT GIỜ NGAY
+        </button>
+    </div>
+
+    <!-- Trạng thái -->
+    <div class="card">
+        <div class="status-header">
+            <div style="display: none;"><span id="display-id"></span></div>
+            <div>
+                <span id="st-text" style="font-size: 0.8rem; font-weight: bold;">OFFLINE</span>
+                <div id="st-dot" class="dot offline"></div>
+            </div>
+        </div>
+        
+        <div class="clock-section">
+            <div class="clock-box highlight">
+                <span class="clock-label">Hệ thống</span>
+                <span id="web-clock" class="clock-time">00:00:00</span>
+            </div>
+            <div class="clock-box">
+                <span class="clock-label">Mạch ESP32</span>
+                <span id="esp-clock" class="clock-time">--:--:--</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Nút điều khiển chính -->
+    <button id="main-btn" class="btn-pump btn-disabled" onclick="sendPumpCommand()" disabled>
+        <i class="fas fa-power-off"></i> <span id="btn-txt">CHỜ KẾT NỐI...</span>
+    </button>
+
+    <!-- Lịch trình tưới -->
+    <div class="card">
+        <h3 style="margin-top:0; font-size: 1rem;"><i class="fas fa-calendar-check"></i> LỊCH TƯỚI TỰ ĐỘNG</h3>
+        <div id="alarm-list"></div>
+    </div>
+
+    <!-- Nhật ký -->
+    <div class="card">
+        <h3 style="margin-top:0; font-size: 1rem;"><i class="fas fa-history"></i> NHẬT KÝ HOẠT ĐỘNG</h3>
+        <div id="log-box"></div>
+    </div>
+</div>
+
+<script>
+   // --- CẤU HÌNH BIẾN TOÀN CỤC ---
+const alarmContainer = document.getElementById('alarm-list');
+const urlParams = new URLSearchParams(window.location.search);
+
+// Lấy ID từ URL hoặc từ bộ nhớ trình duyệt đã lưu trước đó
+let DEVICE_ID = urlParams.get('id') || localStorage.getItem('last_id') || "";
+
+let client = null;
+let espTimeStr = "";
+let isPumpRunning = false;
+let isOnline = false;
+
+// 1. Tạo danh sách 5 lịch trình khi trang vừa load
+for(let i=0; i<5; i++) {
+    alarmContainer.innerHTML += `
+        <div class="alarm-item">
+            <span style="font-weight:bold; color:#7f8c8d">${i+1}</span>
+            <input type="time" id="t-${i}" oninput="saveToLocal(${i})">
+            <input type="number" id="d-${i}" placeholder="Phút" style="width:55px" oninput="saveToLocal(${i})">
+            <label class="switch">
+                <input type="checkbox" id="a-${i}" onchange="autoSaveAlarm(${i})">
+                <span class="slider"></span>
+            </label>
+            <button class="save-icon" onclick="saveAlarm(${i})" title="Lưu xuống mạch">
+                <i class="fas fa-save"></i>
+            </button>
+        </div>`;
+}
+
+// Hiển thị ID đã lưu vào ô nhập (nếu có)
+if(DEVICE_ID) {
+    document.getElementById('device-id').value = DEVICE_ID;
+}
+
+// 2. TỰ ĐỘNG KẾT NỐI KHI MỞ APP
+window.addEventListener('load', () => {
+    if (DEVICE_ID && DEVICE_ID !== "") {
+        addLog("Hệ thống: Tự động kết nối với ID cũ...");
+        initMQTT();
+    }
+});
+
+function saveToLocal(id) {
+    const time = document.getElementById(`t-${id}`).value;
+    const dur = document.getElementById(`d-${id}`).value;
+    const active = document.getElementById(`a-${id}`).checked;
+    localStorage.setItem(`alarm_${DEVICE_ID}_${id}`, JSON.stringify({time, dur, active}));
+}
+
+function autoSaveAlarm(id) {
+    saveToLocal(id);
+    const time = document.getElementById(`t-${id}`).value;
+    const dur = document.getElementById(`d-${id}`).value;
+    if(time && dur) {
+        saveAlarm(id);
+    } else if(document.getElementById(`a-${id}`).checked) {
+        addLog(`Lịch ${id+1}: Thiếu thông tin để kích hoạt.`);
+        document.getElementById(`a-${id}`).checked = false;
+    }
+}
+
+// 3. KHỞI TẠO KẾT NỐI MQTT
+function initMQTT() {
+    if (!DEVICE_ID) return;
+
+    if (client) {
+        client.end(true);
+        client = null;
+    }
+
+    const MQTT_BROKER = "wss://broker.hivemq.com:8884/mqtt";
+    const options = {
+        clientId: 'ch_web_' + Math.random().toString(16).substr(2, 4),
+        keepalive: 60,
+        clean: true 
+    };
+
+    client = mqtt.connect(MQTT_BROKER, options);
+
+    client.on('connect', () => {
+        isOnline = true;
+        localStorage.setItem('last_id', DEVICE_ID);
+        document.getElementById('display-id').innerText = DEVICE_ID;
+        
+        // --- ẨN PHẦN NHẬP ID KHI KẾT NỐI THÀNH CÔNG ---
+        const loginSection = document.getElementById('login-section');
+        if (loginSection) loginSection.style.display = 'none';
+        
+        addLog("Kết nối thành công!");
+
+        const topics = [
+            `chanhung/${DEVICE_ID}/status`, 
+            `chanhung/${DEVICE_ID}/log`, 
+            `chanhung/${DEVICE_ID}/clock`,
+            `chanhung/${DEVICE_ID}/setup`
+        ];
+
+        client.subscribe(topics, (err) => {
+            if (!err) {
+                setTimeout(() => {
+                    client.publish(`chanhung/${DEVICE_ID}/control`, "GET_SETUP");
+                }, 800); 
+            }
+        });
+    });
+
+    client.on('message', (topic, payload) => {
+        const msg = payload.toString();
+        if (topic.includes('status')) updateUI(msg);
+        else if (topic.includes('log')) addLog(msg);
+        else if (topic.includes('clock')) {
+            espTimeStr = msg;
+            document.getElementById('esp-clock').innerText = msg;
+        } 
+        else if (topic.includes('setup')) {
+            const p = msg.split(':');
+            if (p[0] === "SETUP" && p.length >= 6) {
+                const id = p[1];
+                const timeStr = `${p[2].padStart(2, '0')}:${p[3].padStart(2, '0')}`;
+                if (document.getElementById(`t-${id}`)) {
+                    document.getElementById(`t-${id}`).value = timeStr;
+                    document.getElementById(`d-${id}`).value = p[4];
+                    document.getElementById(`a-${id}`).checked = (p[5] === "1");
+                }
+            }
+        }
+    });
+
+    client.on('close', () => {
+        isOnline = false;
+        updateUI("MAT_KET_NOI");
+        // Hiện lại phần nhập nếu mất kết nối lâu
+        // document.getElementById('login-section').style.display = 'block';
+    });
+}
+
+function reconnect() {
+    const inputId = document.getElementById('device-id').value.trim();
+    if(inputId) {
+        DEVICE_ID = inputId;
+        document.getElementById('log-box').innerHTML = "";
+        initMQTT();
+    } else {
+        alert("Vui lòng nhập Mã ID thiết bị!");
+    }
+}
+
+function updateUI(status) {
+    const dot = document.getElementById('st-dot');
+    const stText = document.getElementById('st-text');
+    const txt = document.getElementById('btn-txt');
+    const btn = document.getElementById('main-btn');
+
+    btn.disabled = false;
+    btn.classList.remove('btn-disabled');
+
+    if(status === "MAT_KET_NOI") {
+        dot.className = "dot offline";
+        stText.innerText = "OFFLINE";
+        btn.className = "btn-pump btn-off btn-disabled";
+        btn.disabled = true;
+        txt.innerText = "MẤT KẾT NỐI MẠCH";
+    } else if (status.includes("DANG_TUOI")) {
+        dot.className = "dot online";
+        stText.innerText = "ONLINE";
+        btn.className = "btn-pump btn-off"; 
+        txt.innerText = "TẮT MÁY BƠM NGAY";
+        isPumpRunning = true;
+    } else {
+        dot.className = "dot online";
+        stText.innerText = "ONLINE";
+        btn.className = "btn-pump btn-on"; 
+        txt.innerText = "BẬT MÁY BƠM TAY";
+        isPumpRunning = false;
+    }
+}
+
+function sendPumpCommand() {
+    if(!client || !isOnline) return;
+    const cmd = isPumpRunning ? "PUMP:OFF" : "PUMP:ON";
+    client.publish(`chanhung/${DEVICE_ID}/control`, cmd);
+}
+
+function saveAlarm(id) {
+    if(!client) return alert("Chưa kết nối!");
+    const time = document.getElementById(`t-${id}`).value;
+    const dur = document.getElementById(`d-${id}`).value;
+    const active = document.getElementById(`a-${id}`).checked ? 1 : 0;
+    if(!time || !dur) return alert("Vui lòng nhập giờ và số phút tưới!");
+    
+    const [h, m] = time.split(':');
+    const cmd = `SET_ALARM:${id}:${parseInt(h)}:${parseInt(m)}:${dur}:${active}`;
+    client.publish(`chanhung/${DEVICE_ID}/control`, cmd);
+    addLog(`Lịch ${id+1}: Đã gửi yêu cầu lưu...`);
+}
+
+function addLog(msg) {
+    const logBox = document.getElementById('log-box');
+    const time = new Date().toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit', second:'2-digit'});
+    logBox.innerHTML += `<div><span style="color:#aaa">[${time}]</span> > ${msg}</div>`;
+    logBox.scrollTop = logBox.scrollHeight;
+}
+
+// Đồng hồ hệ thống và kiểm tra lệch giờ
+setInterval(() => {
+    const now = new Date();
+    const webTimeStr = now.toLocaleTimeString('en-GB', { hour12: false });
+    document.getElementById('web-clock').innerText = webTimeStr;
+
+    if(espTimeStr && espTimeStr !== "--:--:--") {
+        const toSec = (s) => {
+            const p = s.split(':');
+            return parseInt(p[0]) * 3600 + parseInt(p[1]) * 60 + parseInt(p[2]);
+        };
+        const diff = Math.abs(toSec(webTimeStr) - toSec(espTimeStr));
+        document.getElementById('sync-warning').style.display = (diff > 300) ? "block" : "none";
+    }
+}, 1000);
+</script>
+</body>
+</html>
