@@ -354,6 +354,23 @@ setInterval(() => {
         document.getElementById('sync-warning').style.display = (diff > 300) ? "block" : "none";
     }
 }, 1000);
+
+// Thêm hàm này vào bất kỳ đâu trong phần <script>
+function syncTime() {
+    if(!client || !isOnline) {
+        alert("Chưa kết nối với thiết bị!");
+        return;
+    }
+    
+    // Gửi lệnh yêu cầu ESP32 tự đồng bộ với NTP Server
+    client.publish(`chanhung/${DEVICE_ID}/control`, "SYNC_TIME");
+    
+    // Hiệu ứng giao diện: Thông báo cho người dùng
+    addLog("Hệ thống: Đang yêu cầu mạch cập nhật lại giờ chuẩn...");
+    
+    // Tạm ẩn cảnh báo sau khi nhấn (nó sẽ hiện lại nếu sau 10s vẫn lệch)
+    document.getElementById('sync-warning').style.display = "none";
+}
 </script>
 </body>
 </html>
