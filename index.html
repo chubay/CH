@@ -3,15 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- Chế độ chạy toàn màn hình giống App thật -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <!-- Nếu file của bạn là logo.jpg -->
     <link rel="apple-touch-icon" href="logo1.jpg">
     <link rel="icon" href="logo1.jpg">
     <title>Chấn Hưng IoT - Hệ Thống Điều Khiển</title>
-    <!-- Nhúng thư viện MQTT qua CDN -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/4.3.7/mqtt.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -71,22 +68,19 @@
 <body>
 
 <div class="container">
-    <!-- Sửa tiêu đề: Bỏ chữ IOT -->
-<h2 style="text-align: center; color: var(--dark); margin-bottom: 20px;">
-    <i class="fas fa-leaf" style="color: var(--primary);"></i> CHẤN HƯNG
-</h2>
+    <h2 style="text-align: center; color: var(--dark); margin-bottom: 20px;">
+        <i class="fas fa-leaf" style="color: var(--primary);"></i> CHẤN HƯNG
+    </h2>
 
-<!-- Thêm id="login-section" để điều khiển ẩn hiện -->
-<div id="login-section" class="card" style="padding: 15px;">
-    <div class="device-selector">
-        <input type="text" id="device-id" placeholder="Nhập ID (Ví dụ: 240AC4...)">
-        <button class="btn-connect" onclick="reconnect()">
-            <i class="fas fa-link"></i> Kết nối
-        </button>
+    <div id="login-section" class="card" style="padding: 15px;">
+        <div class="device-selector">
+            <input type="text" id="device-id" placeholder="Nhập ID (Ví dụ: 240AC4...)">
+            <button class="btn-connect" onclick="reconnect()">
+                <i class="fas fa-link"></i> Kết nối
+            </button>
+        </div>
     </div>
-</div>
 
-    <!-- Cảnh báo lệch giờ -->
     <div id="sync-warning">
         <i class="fas fa-clock"></i> <b>Lỗi thời gian!</b><br>
         Giờ mạch đang lệch so với thực tế. Lịch trình có thể chạy sai.<br>
@@ -95,7 +89,6 @@
         </button>
     </div>
 
-    <!-- Trạng thái -->
     <div class="card">
         <div class="status-header">
             <div style="display: none;"><span id="display-id"></span></div>
@@ -115,20 +108,24 @@
                 <span id="esp-clock" class="clock-time">--:--:--</span>
             </div>
         </div>
+
+        <div style="margin-top: 12px; padding: 10px; background: #f8f9fa; border-radius: 12px; border: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 0.8rem; color: #7f8c8d; font-weight: bold; text-transform: uppercase;">
+                <i class="fas fa-memory" style="color: var(--blue); margin-right: 4px;"></i> RAM Trống:
+            </span>
+            <span id="web-ram" style="font-family: 'Courier New', monospace; font-weight: bold; color: var(--dark);">-- Bytes</span>
+        </div>
     </div>
 
-    <!-- Nút điều khiển chính -->
     <button id="main-btn" class="btn-pump btn-disabled" onclick="sendPumpCommand()" disabled>
         <i class="fas fa-power-off"></i> <span id="btn-txt">CHỜ KẾT NỐI...</span>
     </button>
 
-    <!-- Lịch trình tưới -->
     <div class="card">
         <h3 style="margin-top:0; font-size: 1rem;"><i class="fas fa-calendar-check"></i> LỊCH TƯỚI TỰ ĐỘNG</h3>
         <div id="alarm-list"></div>
     </div>
 
-    <!-- Nhật ký -->
     <div class="card">
         <h3 style="margin-top:0; font-size: 1rem;"><i class="fas fa-history"></i> NHẬT KÝ HOẠT ĐỘNG</h3>
         <div id="log-box"></div>
@@ -226,11 +223,13 @@ function initMQTT() {
         
         addLog("Kết nối thành công!");
 
+        // VỊ TRÍ ĐÃ CẬP NHẬT: Thêm topic /ram vào danh sách nhận dữ liệu
         const topics = [
             `chanhung/${DEVICE_ID}/status`, 
             `chanhung/${DEVICE_ID}/log`, 
             `chanhung/${DEVICE_ID}/clock`,
-            `chanhung/${DEVICE_ID}/setup`
+            `chanhung/${DEVICE_ID}/setup`,
+            `chanhung/${DEVICE_ID}/ram`
         ];
 
         client.subscribe(topics, (err) => {
@@ -250,6 +249,10 @@ function initMQTT() {
             espTimeStr = msg;
             document.getElementById('esp-clock').innerText = msg;
         } 
+        // VỊ TRÍ ĐÃ CẬP NHẬT: Bóc tách tin nhắn RAM và in ra ô hiển thị
+        else if (topic.includes('ram')) {
+            document.getElementById('web-ram').innerText = msg;
+        }
         else if (topic.includes('setup')) {
             const p = msg.split(':');
             if (p[0] === "SETUP" && p.length >= 6) {
@@ -266,9 +269,8 @@ function initMQTT() {
 
     client.on('close', () => {
         isOnline = false;
+        document.getElementById('web-ram').innerText = "-- Bytes"; // Trả về dạng mặc định khi mất kết nối
         updateUI("MAT_KET_NOI");
-        // Hiện lại phần nhập nếu mất kết nối lâu
-        // document.getElementById('login-section').style.display = 'block';
     });
 }
 
