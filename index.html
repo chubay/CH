@@ -63,16 +63,80 @@
         input:checked + .slider { background-color: var(--primary); }
         input:checked + .slider:before { transform: translateX(20px); }
         .hidden { display: none !important; }
+        
+#admin-login, #admin-panel {
+    background: white; 
+    border-radius: 20px; 
+    padding: 20px; 
+    margin-bottom: 15px; 
+    box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+    /* THÊM CÁC DÒNG NÀY */
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 90%;
+    max-width: 400px;
+    z-index: 999; /* Cao hơn overlay (998) */
+}
     </style>
 </head>
 <body>
+
+<div id="toast-message" style="position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#27ae60; color:white; padding:12px 20px; border-radius:25px; display:none; z-index:1000; box-shadow:0 4px 6px rgba(0,0,0,0.2);">
+    Đã lưu lịch thành công!
+</div>
 
 <div class="container">
     <h2 style="text-align: center; color: var(--dark); margin-bottom: 20px;">
         <i class="fas fa-leaf" style="color: var(--primary);"></i> CHẤN HƯNG
     </h2>
 
-    <div id="login-section" class="card" style="padding: 15px;">
+
+
+
+<button class="btn-connect" style="background:#7f8c8d; margin-bottom: 10px;" onclick="showAdmin()">
+    <i class="fas fa-cog"></i> Cài đặt Quản trị viên
+</button>
+
+<div id="admin-login" class="card hidden">
+    <h4 style="margin-top:0">Đăng nhập Admin</h4>
+    <input type="password" id="admin-pass" placeholder="Nhập mật khẩu Admin" style="width:100%; box-sizing:border-box; margin-bottom:10px; padding:10px; border:1px solid #ccc; border-radius:8px;">
+    
+    <label style="display:block; margin-bottom:10px; font-size: 0.8rem;">
+        <input type="checkbox" onclick="togglePass()"> Hiển thị mật khẩu
+    </label>
+
+    <div style="display: flex; gap: 10px;">
+        <button class="btn-connect" style="flex:1; background:var(--primary);" onclick="checkAdmin()">Đăng nhập</button>
+        <button class="btn-connect" style="flex:1; background:#7f8c8d;" onclick="closeAdmin()">Thoát</button>
+    </div>
+</div>
+
+<div id="admin-panel" class="card hidden">
+    <h3 style="margin-top:0"><i class="fas fa-user-shield"></i> THÔNG TIN QUẢN TRỊ</h3>
+    <p>ID Thiết bị: 
+    <input type="text" id="admin-mac-input" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc; width: 120px;">
+    <button class="btn-connect" style="padding: 5px 10px; font-size: 0.8rem; background: var(--primary);" onclick="updateDeviceIdFromAdmin()">Lưu</button>
+</p>
+    
+    <div style="background: #f8f9fa; padding: 10px; border-radius: 10px; margin: 10px 0;">
+        <p style="margin: 0;">RTC: <b id="admin-esp-clock" style="color:var(--primary)">--:--:--</b></p>
+        <p style="margin: 0;">WEB: <b id="web-time-admin" style="color:var(--blue)">--:--:--</b></p>
+    </div>
+
+    <p>RAM Trống: <b id="admin-ram">-- Bytes</b></p>
+    <p>Phiên bản: <b id="admin-ver">--</b></p>
+    <p>Thời gian hoạt động: <b id="admin-uptime">--</b></p>
+    <p>Sóng WiFi (RSSI): <b id="admin-rssi">--</b></p>
+    <div id="connection-status" style="font-size: 0.8rem; background:#eee; padding:10px; border-radius:8px;"></div>
+    <button class="btn-connect" style="background:#e74c3c; margin-top:10px; width:100%" onclick="closeAdmin()">Đóng</button>
+</div>
+
+
+
+
+    <div id="login-section" class="card hidden" style="padding: 15px;">
         <div class="device-selector">
             <input type="text" id="device-id" placeholder="Nhập ID (Ví dụ: 240AC4...)">
             <button class="btn-connect" onclick="reconnect()">
@@ -100,21 +164,12 @@
         
         <div class="clock-section">
             <div class="clock-box highlight">
-                <span class="clock-label">Hệ thống</span>
+                <span class="clock-label"></span>
                 <span id="web-clock" class="clock-time">00:00:00</span>
-            </div>
-            <div class="clock-box">
-                <span class="clock-label">Mạch ESP32</span>
-                <span id="esp-clock" class="clock-time">--:--:--</span>
             </div>
         </div>
 
-        <div style="margin-top: 12px; padding: 10px; background: #f8f9fa; border-radius: 12px; border: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
-            <span style="font-size: 0.8rem; color: #7f8c8d; font-weight: bold; text-transform: uppercase;">
-                <i class="fas fa-memory" style="color: var(--blue); margin-right: 4px;"></i> RAM Trống:
-            </span>
-            <span id="web-ram" style="font-family: 'Courier New', monospace; font-weight: bold; color: var(--dark);">-- Bytes</span>
-        </div>
+      
     </div>
 
     <button id="main-btn" class="btn-pump btn-disabled" onclick="sendPumpCommand()" disabled>
@@ -125,11 +180,9 @@
         <h3 style="margin-top:0; font-size: 1rem;"><i class="fas fa-calendar-check"></i> LỊCH TƯỚI TỰ ĐỘNG</h3>
         <div id="alarm-list"></div>
     </div>
+    
 
-    <div class="card">
-        <h3 style="margin-top:0; font-size: 1rem;"><i class="fas fa-history"></i> NHẬT KÝ HOẠT ĐỘNG</h3>
-        <div id="log-box"></div>
-    </div>
+    <div id="overlay" class="hidden" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:998;"></div>
 </div>
 
 <script>
@@ -170,7 +223,7 @@ if(DEVICE_ID) {
 // 2. TỰ ĐỘNG KẾT NỐI KHI MỞ APP
 window.addEventListener('load', () => {
     if (DEVICE_ID && DEVICE_ID !== "") {
-        addLog("Hệ thống: Tự động kết nối với ID cũ...");
+
         initMQTT();
     }
 });
@@ -189,7 +242,7 @@ function autoSaveAlarm(id) {
     if(time && dur) {
         saveAlarm(id);
     } else if(document.getElementById(`a-${id}`).checked) {
-        addLog(`Lịch ${id+1}: Thiếu thông tin để kích hoạt.`);
+        
         document.getElementById(`a-${id}`).checked = false;
     }
 }
@@ -221,15 +274,19 @@ function initMQTT() {
         const loginSection = document.getElementById('login-section');
         if (loginSection) loginSection.style.display = 'none';
         
-        addLog("Kết nối thành công!");
-
+        
         // VỊ TRÍ ĐÃ CẬP NHẬT: Thêm topic /ram vào danh sách nhận dữ liệu
+        
         const topics = [
             `chanhung/${DEVICE_ID}/status`, 
             `chanhung/${DEVICE_ID}/log`, 
             `chanhung/${DEVICE_ID}/clock`,
             `chanhung/${DEVICE_ID}/setup`,
-            `chanhung/${DEVICE_ID}/ram`
+            `chanhung/${DEVICE_ID}/ram`,
+            `chanhung/${DEVICE_ID}/rssi`,
+            `chanhung/${DEVICE_ID}/uptime`,
+            `chanhung/${DEVICE_ID}/version`
+            
         ];
 
         client.subscribe(topics, (err) => {
@@ -241,10 +298,13 @@ function initMQTT() {
         });
     });
 
-    client.on('message', (topic, payload) => {
+   /* client.on('message', (topic, payload) => {
         const msg = payload.toString();
         if (topic.includes('status')) updateUI(msg);
-        else if (topic.includes('log')) addLog(msg);
+        
+        else if (topic.includes('rssi')) document.getElementById('admin-rssi').innerText = msg;
+        else if (topic.includes('uptime')) document.getElementById('admin-uptime').innerText = msg;
+        else if (topic.includes('version')) document.getElementById('admin-ver').innerText = msg;
         else if (topic.includes('clock')) {
             espTimeStr = msg;
             document.getElementById('esp-clock').innerText = msg;
@@ -265,7 +325,80 @@ function initMQTT() {
                 }
             }
         }
-    });
+    });*/
+
+    // code update 1
+    // Biến lưu trữ dữ liệu để dùng khi Admin panel mở
+//let adminData = { ram: "--", clock: "--:--:--" };
+let adminData = { 
+    ram: "--", 
+    clock: "--:--:--",
+    version: "--",
+    uptime: "--",
+    rssi: "--" 
+};
+client.on('message', (topic, payload) => {
+    const msg = payload.toString();
+    // 1. Luôn xử lý trạng thái để nút bơm tay hoạt động đúng
+    if (topic.includes('status')) {
+        updateUI(msg);
+    } 
+    
+    // --- BẮT ĐẦU ĐOẠN CẦN THÊM ---
+    else if (topic.includes('setup')) {
+        const p = msg.split(':');
+        // Kiểm tra xem có đúng định dạng SETUP:ID:H:M:D:ACT không
+        if (p[0] === "SETUP" && p.length >= 6) {
+            const id = p[1];
+            // Format HH:MM để input type="time" hiển thị được
+            const timeStr = `${p[2].padStart(2, '0')}:${p[3].padStart(2, '0')}`;
+            
+            const timeInput = document.getElementById(`t-${id}`);
+            const durInput = document.getElementById(`d-${id}`);
+            const actInput = document.getElementById(`a-${id}`);
+            
+            if (timeInput) {
+                timeInput.value = timeStr;
+                durInput.value = p[4];
+                actInput.checked = (p[5] === "1");
+                
+                // Lưu vào local để trình duyệt nhớ trạng thái
+                saveToLocal(id);
+            }
+        }
+    }
+    // --- KẾT THÚC ĐOẠN CẦN THÊM ---
+    
+    // 2. Lưu dữ liệu kỹ thuật vào biến trung gian
+    else if (topic.includes('clock')) {
+        adminData.clock = msg;
+        // Chỉ cập nhật DOM nếu bảng Admin đang mở để tránh lỗi
+        if (document.getElementById('admin-esp-clock')) {
+            document.getElementById('admin-esp-clock').innerText = msg;
+        }
+        
+    }
+    else if (topic.includes('ram')) {
+        adminData.ram = msg;
+        if (document.getElementById('admin-ram')) {
+            document.getElementById('admin-ram').innerText = msg;
+        }
+    }
+    
+    // 3. Các topic khác giữ nguyên
+    else if (topic.includes('rssi')) {
+        if(document.getElementById('admin-rssi')) document.getElementById('admin-rssi').innerText = msg;
+    }
+    else if (topic.includes('uptime')) {
+        if(document.getElementById('admin-uptime')) document.getElementById('admin-uptime').innerText = msg;
+    }
+    else if (topic.includes('version')) {
+        adminData.version = msg;
+        if (document.getElementById('admin-ver')) document.getElementById('admin-ver').innerText = msg;
+    }
+    
+    
+});
 
     client.on('close', () => {
         isOnline = false;
@@ -321,7 +454,7 @@ function sendPumpCommand() {
     client.publish(`chanhung/${DEVICE_ID}/control`, cmd);
 }
 
-function saveAlarm(id) {
+/*function saveAlarm(id) {
     if(!client) return alert("Chưa kết nối!");
     const time = document.getElementById(`t-${id}`).value;
     const dur = document.getElementById(`d-${id}`).value;
@@ -331,7 +464,39 @@ function saveAlarm(id) {
     const [h, m] = time.split(':');
     const cmd = `SET_ALARM:${id}:${parseInt(h)}:${parseInt(m)}:${dur}:${active}`;
     client.publish(`chanhung/${DEVICE_ID}/control`, cmd);
-    addLog(`Lịch ${id+1}: Đã gửi yêu cầu lưu...`);
+    
+}*/
+
+// cập nhật hàm savealarm
+function saveAlarm(id) {
+    if(!client || !isOnline) return alert("Chưa kết nối!");
+    
+    const time = document.getElementById(`t-${id}`).value;
+    const dur = document.getElementById(`d-${id}`).value;
+    const active = document.getElementById(`a-${id}`).checked ? 1 : 0;
+    
+    if(!time || !dur) return alert("Vui lòng nhập giờ và số phút tưới!");
+    
+    const [h, m] = time.split(':');
+    const cmd = `SET_ALARM:${id}:${parseInt(h)}:${parseInt(m)}:${dur}:${active}`;
+    
+    // Gửi lệnh xuống mạch
+    client.publish(`chanhung/${DEVICE_ID}/control`, cmd);
+    
+    // Hiển thị thông báo thành công
+    showToast(`Đã lưu lịch ${parseInt(id) + 1} xuống mạch!`);
+}
+
+// Hàm hỗ trợ hiển thị thông báo
+function showToast(message) {
+    const toast = document.getElementById('toast-message');
+    toast.innerText = message;
+    toast.style.display = 'block';
+    
+    // Tự động ẩn thông báo sau 2 giây
+    setTimeout(() => {
+        toast.style.display = 'none';
+    }, 2000);
 }
 
 function addLog(msg) {
@@ -344,16 +509,16 @@ function addLog(msg) {
 // Đồng hồ hệ thống và kiểm tra lệch giờ
 setInterval(() => {
     const now = new Date();
-    const webTimeStr = now.toLocaleTimeString('en-GB', { hour12: false });
-    document.getElementById('web-clock').innerText = webTimeStr;
-
-    if(espTimeStr && espTimeStr !== "--:--:--") {
-        const toSec = (s) => {
-            const p = s.split(':');
-            return parseInt(p[0]) * 3600 + parseInt(p[1]) * 60 + parseInt(p[2]);
-        };
-        const diff = Math.abs(toSec(webTimeStr) - toSec(espTimeStr));
-        document.getElementById('sync-warning').style.display = (diff > 300) ? "block" : "none";
+    const timeStr = now.toLocaleTimeString('en-GB', { hour12: false });
+    
+    // Cập nhật đồng hồ ngoài trang chính
+    const webClockMain = document.getElementById('web-clock');
+    if(webClockMain) webClockMain.innerText = timeStr;
+    
+    // Cập nhật đồng hồ trong bảng Admin (nếu đang mở)
+    const webClockAdmin = document.getElementById('web-time-admin');
+    if(webClockAdmin && !document.getElementById('admin-panel').classList.contains('hidden')) {
+        webClockAdmin.innerText = timeStr;
     }
 }, 1000);
 
@@ -367,11 +532,160 @@ function syncTime() {
     // Gửi lệnh yêu cầu ESP32 tự đồng bộ với NTP Server
     client.publish(`chanhung/${DEVICE_ID}/control`, "SYNC_TIME");
     
-    // Hiệu ứng giao diện: Thông báo cho người dùng
-    addLog("Hệ thống: Đang yêu cầu mạch cập nhật lại giờ chuẩn...");
     
     // Tạm ẩn cảnh báo sau khi nhấn (nó sẽ hiện lại nếu sau 10s vẫn lệch)
     document.getElementById('sync-warning').style.display = "none";
+}
+
+// --- LOGIC QUẢN TRỊ VIÊN ---
+
+// 1. Hiển thị hộp thoại đăng nhập
+/*function showAdmin() {
+    document.getElementById('admin-login').classList.remove('hidden');
+    document.getElementById('overlay').classList.remove('hidden'); // Hiện nền mờ
+}*/
+
+// 2. Kiểm tra mật khẩu Admin
+function checkAdmin() {
+    const pass = document.getElementById('admin-pass').value;
+    if (pass === "admin123") { // Lưu ý: Thay đổi mật khẩu tại đây
+        document.getElementById('admin-login').classList.add('hidden');
+        document.getElementById('admin-panel').classList.remove('hidden');
+        updateAdminInfo(); // Cập nhật dữ liệu ngay khi vừa đăng nhập
+    } else {
+        alert("Sai mật khẩu!");
+    }
+}
+// bổ sung close admin
+/*function closeAdmin() {
+    document.getElementById('admin-login').classList.add('hidden');
+    document.getElementById('admin-panel').classList.add('hidden');
+    document.getElementById('overlay').classList.add('hidden'); // Ẩn nền mờ
+    document.getElementById('admin-pass').value = "";
+}*/
+// Hàm hiển thị/ẩn mật khẩu
+function togglePass() {
+    const passInput = document.getElementById('admin-pass');
+    if (passInput.type === "password") {
+        passInput.type = "text";
+    } else {
+        passInput.type = "password";
+    }
+}
+
+// Hàm showAdmin (đảm bảo nó hiện overlay)
+function showAdmin() {
+    document.getElementById('admin-login').classList.remove('hidden');
+    document.getElementById('overlay').classList.remove('hidden');
+}
+
+// Hàm closeAdmin (Dùng chung cho cả màn hình login và bảng admin)
+function closeAdmin() {
+    // Ẩn cả hai khu vực
+    document.getElementById('admin-login').classList.add('hidden');
+    document.getElementById('admin-panel').classList.add('hidden');
+    document.getElementById('overlay').classList.add('hidden');
+    
+    // Reset ô nhập mật khẩu
+    document.getElementById('admin-pass').value = "";
+    document.getElementById('admin-pass').type = "password";
+}
+// 3. Hàm tính toán và cập nhật thông tin lên bảng Admin
+// --- LOGIC CẤU HÌNH THIẾT BỊ LẦN ĐẦU ---
+
+
+
+// update code 2
+// Đảm bảo bạn đã khai báo biến này ở phần đầu script:
+//let adminData = { ram: "-- Bytes", clock: "--:--:--" };
+
+
+// code update 3
+// Đảm bảo bạn đã khai báo đầy đủ các biến này ở đầu script
+let adminData = { 
+    ram: "-- Bytes", 
+    clock: "--:--:--", 
+    version: "--", 
+    uptime: "--", 
+    rssi: "--" 
+};
+
+/**
+ * Cập nhật bảng Admin với dữ liệu mới nhất từ MQTT
+ * Đảm bảo các biến trong adminData đã được cập nhật từ client.on('message')
+ */
+function updateAdminInfo() {
+    // 1. Cập nhật ID
+    const adminMacInput = document.getElementById('admin-mac-input');
+    //if(adminMacDiv) adminMacDiv.innerText = DEVICE_ID || "--";
+    if(adminMacInput) {
+        adminMacInput.value = DEVICE_ID; 
+    }
+
+    // 2. Cập nhật giờ Mạch (dữ liệu lấy từ MQTT đã lưu trong adminData)
+    const espClock = document.getElementById('admin-esp-clock');
+    if(espClock) espClock.innerText = adminData.clock;
+
+    // 3. Cập nhật giờ Thực (Web) ngay tại thời điểm mở bảng
+    const now = new Date();
+    const webClock = document.getElementById('web-time-admin');
+    if(webClock) {
+        webClock.innerText = now.toLocaleTimeString('en-GB', { hour12: false });
+    }
+
+    // 4. Các thông số khác
+    document.getElementById('admin-ram').innerText = adminData.ram;
+    document.getElementById('admin-ver').innerText = adminData.version;
+    document.getElementById('admin-uptime').innerText = adminData.uptime;
+    document.getElementById('admin-rssi').innerText = adminData.rssi;
+
+    // 5. Trạng thái MQTT
+    const statusBox = document.getElementById('connection-status');
+    statusBox.innerHTML = `MQTT: ${isOnline ? '<b style="color:var(--primary)">CONNECTED</b>' : '<b style="color:var(--danger)">DISCONNECTED</b>'}`;
+}
+// bổ sung save id
+function saveManualId() {
+    const newId = document.getElementById('manual-device-id').value.trim();
+    if(newId) {
+        DEVICE_ID = newId;
+        localStorage.setItem('last_id', DEVICE_ID);
+        alert("Đã lưu ID thiết bị!");
+        initMQTT(); // Kết nối lại với ID mới
+        updateAdminInfo(); // Refresh lại thông tin
+    } else {
+        alert("Vui lòng nhập ID!");
+    }
+}
+
+// Thêm một nút trong bảng Admin để hiện lại ô nhập ID
+// Trong HTML của bảng Admin, hãy thêm dòng này:
+// <button class="btn-connect" style="background:#f39c12; margin-top:10px;" onclick="showDeviceInput()">Đổi thiết bị khác</button>
+
+// Và thêm hàm này vào thẻ <script>:
+function showDeviceInput() {
+    document.getElementById('login-section').classList.remove('hidden');
+    closeAdmin(); // Đóng bảng admin để thấy ô nhập
+}
+
+function updateDeviceIdFromAdmin() {
+    const newId = document.getElementById('admin-mac-input').value.trim();
+    if(newId === "") {
+        alert("Vui lòng nhập ID hợp lệ!");
+        return;
+    }
+    
+    if(confirm("Bạn có chắc chắn muốn đổi ID sang: " + newId + "?")) {
+        DEVICE_ID = newId;
+        localStorage.setItem('last_id', DEVICE_ID);
+        alert("Đã cập nhật ID mới!");
+        
+        // Khởi động lại kết nối với ID mới
+        initMQTT();
+        
+        // Cập nhật lại giao diện bảng Admin
+        document.getElementById('admin-mac-input').value = DEVICE_ID;
+        closeAdmin(); // Đóng bảng sau khi đổi xong
+    }
 }
 </script>
 </body>
