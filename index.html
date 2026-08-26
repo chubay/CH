@@ -553,7 +553,8 @@ function togglePass() {
 function showAdmin() {
     document.getElementById('admin-login').classList.remove('hidden');
     document.getElementById('overlay').classList.remove('hidden');
-    // GỬI LỆNH CHỦ ĐỘNG: Yêu cầu mạch cung cấp thông tin ngay khi mở bảng Admin
+    
+     // GỬI LỆNH CHỦ ĐỘNG: Yêu cầu mạch cung cấp thông tin ngay khi mở bảng Admin
     if (client && isOnline) {
         client.publish(`chanhung/${DEVICE_ID}/control`, "GET_ADMIN_INFO");
     }
@@ -561,6 +562,10 @@ function showAdmin() {
 
 // Hàm closeAdmin (Dùng chung cho cả màn hình login và bảng admin)
 function closeAdmin() {
+    // --- THÊM DÒNG NÀY ĐỂ GỬI LỆNH BÁO MẠCH NGỪNG GỬI ---
+    if (client && isOnline) {
+        client.publish(`chanhung/${DEVICE_ID}/control`, "CLOSE_ADMIN_INFO");
+    }
     // Ẩn cả hai khu vực
     document.getElementById('admin-login').classList.add('hidden');
     document.getElementById('admin-panel').classList.add('hidden');
