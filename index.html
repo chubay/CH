@@ -78,6 +78,21 @@
     width: 90%;
     max-width: 400px;
     z-index: 999; /* Cao hơn overlay (998) */
+    #admin-login, #admin-panel {
+    background: white; 
+    border-radius: 20px; 
+    padding: 20px; 
+    margin-bottom: 15px; 
+    box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+    /* THÊM CÁC DÒNG NÀY */
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 90%;
+    max-width: 400px;
+    z-index: 999; /* Cao hơn overlay (998) */
+}
 }
     </style>
 </head>
@@ -94,10 +109,22 @@
 
 
 
+<!-- Khung bọc giúp 2 nút nằm trên cùng 1 hàng ngang, đối diện nhau -->
+<div style="display: flex; gap: 10px; margin-bottom: 15px;">
 
-<button class="btn-connect" style="background:#7f8c8d; margin-bottom: 10px;" onclick="showAdmin()">
-    <i class="fas fa-cog"></i> Cài đặt Quản trị viên
-</button>
+    <!-- Nút Cài đặt cũ của bạn (được thêm flex: 1 để tự co giãn cân đối) -->
+    <button class="btn-connect" style="flex: 1; background:#7f8c8d; margin-bottom: 0;" onclick="showAdmin()">
+        <i class="fas fa-cog"></i> Cài đặt
+    </button>
+
+    <!-- Nút Đăng nhập Wifi (được đưa lên đây, bỏ display: block và margin-top cũ, thay bằng flex: 1) -->
+    <a href="http://192.168.4.1" target="_blank" style="flex: 1; text-decoration: none;">
+        <button class="btn-connect" style="background: var(--warning); width: 100%; cursor: pointer; margin-bottom: 0;">
+            <i class="fas fa-wifi"></i> Đăng nhập Wifi
+        </button>
+    </a>
+
+</div>
 
 <div id="admin-login" class="card hidden">
     <h4 style="margin-top:0">Đăng nhập Admin</h4>
@@ -199,6 +226,7 @@ let isPumpRunning = false;
 let isOnline = false;
 
 // 1. Tạo danh sách 5 lịch trình khi trang vừa load
+// 1. Tạo danh sách 5 lịch trình khi trang vừa load
 for(let i=0; i<5; i++) {
     alarmContainer.innerHTML += `
         <div class="alarm-item">
@@ -206,12 +234,10 @@ for(let i=0; i<5; i++) {
             <input type="time" id="t-${i}" oninput="saveToLocal(${i})">
             <input type="number" id="d-${i}" placeholder="Phút" style="width:55px" oninput="saveToLocal(${i})">
             <label class="switch">
-                <input type="checkbox" id="a-${i}" onchange="autoSaveAlarm(${i})">
+                <!-- Khi bấm bật/tắt switch, gọi thẳng hàm autoSaveAndSync(${i}) -->
+                <input type="checkbox" id="a-${i}" onchange="autoSaveAndSync(${i})">
                 <span class="slider"></span>
             </label>
-            <button class="save-icon" onclick="saveAlarm(${i})" title="Lưu xuống mạch">
-                <i class="fas fa-save"></i>
-            </button>
         </div>`;
 }
 
@@ -298,38 +324,9 @@ function initMQTT() {
         });
     });
 
-   /* client.on('message', (topic, payload) => {
-        const msg = payload.toString();
-        if (topic.includes('status')) updateUI(msg);
-        
-        else if (topic.includes('rssi')) document.getElementById('admin-rssi').innerText = msg;
-        else if (topic.includes('uptime')) document.getElementById('admin-uptime').innerText = msg;
-        else if (topic.includes('version')) document.getElementById('admin-ver').innerText = msg;
-        else if (topic.includes('clock')) {
-            espTimeStr = msg;
-            document.getElementById('esp-clock').innerText = msg;
-        } 
-        // VỊ TRÍ ĐÃ CẬP NHẬT: Bóc tách tin nhắn RAM và in ra ô hiển thị
-        else if (topic.includes('ram')) {
-            document.getElementById('web-ram').innerText = msg;
-        }
-        else if (topic.includes('setup')) {
-            const p = msg.split(':');
-            if (p[0] === "SETUP" && p.length >= 6) {
-                const id = p[1];
-                const timeStr = `${p[2].padStart(2, '0')}:${p[3].padStart(2, '0')}`;
-                if (document.getElementById(`t-${id}`)) {
-                    document.getElementById(`t-${id}`).value = timeStr;
-                    document.getElementById(`d-${id}`).value = p[4];
-                    document.getElementById(`a-${id}`).checked = (p[5] === "1");
-                }
-            }
-        }
-    });*/
+   
 
-    // code update 1
-    // Biến lưu trữ dữ liệu để dùng khi Admin panel mở
-//let adminData = { ram: "--", clock: "--:--:--" };
+
 let adminData = { 
     ram: "--", 
     clock: "--:--:--",
@@ -432,18 +429,18 @@ function updateUI(status) {
         stText.innerText = "OFFLINE";
         btn.className = "btn-pump btn-off btn-disabled";
         btn.disabled = true;
-        txt.innerText = "MẤT KẾT NỐI MẠCH";
+        txt.innerText = "MẤT KẾT NỐI ";
     } else if (status.includes("DANG_TUOI")) {
         dot.className = "dot online";
         stText.innerText = "ONLINE";
         btn.className = "btn-pump btn-off"; 
-        txt.innerText = "TẮT MÁY BƠM NGAY";
+        txt.innerText = "TẮT MÁY BƠM ";
         isPumpRunning = true;
     } else {
         dot.className = "dot online";
         stText.innerText = "ONLINE";
         btn.className = "btn-pump btn-on"; 
-        txt.innerText = "BẬT MÁY BƠM TAY";
+        txt.innerText = "BẬT MÁY BƠM ";
         isPumpRunning = false;
     }
 }
@@ -454,18 +451,7 @@ function sendPumpCommand() {
     client.publish(`chanhung/${DEVICE_ID}/control`, cmd);
 }
 
-/*function saveAlarm(id) {
-    if(!client) return alert("Chưa kết nối!");
-    const time = document.getElementById(`t-${id}`).value;
-    const dur = document.getElementById(`d-${id}`).value;
-    const active = document.getElementById(`a-${id}`).checked ? 1 : 0;
-    if(!time || !dur) return alert("Vui lòng nhập giờ và số phút tưới!");
-    
-    const [h, m] = time.split(':');
-    const cmd = `SET_ALARM:${id}:${parseInt(h)}:${parseInt(m)}:${dur}:${active}`;
-    client.publish(`chanhung/${DEVICE_ID}/control`, cmd);
-    
-}*/
+
 
 // cập nhật hàm savealarm
 function saveAlarm(id) {
@@ -539,11 +525,7 @@ function syncTime() {
 
 // --- LOGIC QUẢN TRỊ VIÊN ---
 
-// 1. Hiển thị hộp thoại đăng nhập
-/*function showAdmin() {
-    document.getElementById('admin-login').classList.remove('hidden');
-    document.getElementById('overlay').classList.remove('hidden'); // Hiện nền mờ
-}*/
+
 
 // 2. Kiểm tra mật khẩu Admin
 function checkAdmin() {
@@ -556,13 +538,7 @@ function checkAdmin() {
         alert("Sai mật khẩu!");
     }
 }
-// bổ sung close admin
-/*function closeAdmin() {
-    document.getElementById('admin-login').classList.add('hidden');
-    document.getElementById('admin-panel').classList.add('hidden');
-    document.getElementById('overlay').classList.add('hidden'); // Ẩn nền mờ
-    document.getElementById('admin-pass').value = "";
-}*/
+
 // Hàm hiển thị/ẩn mật khẩu
 function togglePass() {
     const passInput = document.getElementById('admin-pass');
@@ -577,6 +553,10 @@ function togglePass() {
 function showAdmin() {
     document.getElementById('admin-login').classList.remove('hidden');
     document.getElementById('overlay').classList.remove('hidden');
+    // GỬI LỆNH CHỦ ĐỘNG: Yêu cầu mạch cung cấp thông tin ngay khi mở bảng Admin
+    if (client && isOnline) {
+        client.publish(`chanhung/${DEVICE_ID}/control`, "GET_ADMIN_INFO");
+    }
 }
 
 // Hàm closeAdmin (Dùng chung cho cả màn hình login và bảng admin)
@@ -685,6 +665,38 @@ function updateDeviceIdFromAdmin() {
         // Cập nhật lại giao diện bảng Admin
         document.getElementById('admin-mac-input').value = DEVICE_ID;
         closeAdmin(); // Đóng bảng sau khi đổi xong
+    }
+}
+// Hàm tự động lưu vào localStorage và ĐỒNG THỜI đẩy lệnh xuống mạch khi gạt công tắc
+function autoSaveAndSync(id) {
+    // 1. Lưu tạm vào bộ nhớ trình duyệt trước
+    saveToLocal(id);
+    
+    const time = document.getElementById(`t-${id}`).value;
+    const dur = document.getElementById(`d-${id}`).value;
+    const active = document.getElementById(`a-${id}`).checked ? 1 : 0;
+    
+    // Nếu người dùng bật công tắc nhưng chưa nhập giờ hoặc số phút
+    if (active === 1 && (!time || !dur)) {
+        alert("Vui lòng nhập đầy đủ giờ và số phút tưới trước khi bật lịch!");
+        document.getElementById(`a-${id}`).checked = false; // Trả lại trạng thái tắt
+        saveToLocal(id);
+        return;
+    }
+    
+    // Nếu đã kết nối MQTT thì gửi lệnh xuống mạch ngay lập tức
+    if (client && isOnline) {
+        if (time && dur) {
+            const [h, m] = time.split(':');
+            const cmd = `SET_ALARM:${id}:${parseInt(h)}:${parseInt(m)}:${dur}:${active}`;
+            client.publish(`chanhung/${DEVICE_ID}/control`, cmd);
+            
+            // Hiển thị thông báo nhỏ
+            showToast(`Đã cập nhật lịch ${id + 1}!`);
+        }
+    } else {
+        alert("Chưa kết nối với thiết bị!");
+        document.getElementById(`a-${id}`).checked = false; // Trả về tắt nếu chưa kết nối
     }
 }
 </script>
